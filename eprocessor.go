@@ -1,4 +1,4 @@
-// This program is a command-line tool built by e-COMPANY for automated payment records data processing. 
+// This program is a command-line tool built by e-COMPANY for automated payment records data processing.
 package main
 
 // =======================================================================
@@ -11,9 +11,9 @@ package main
 // 4. For any record that has an empty value, set the value of the field to the value "missing".
 // 5. Remove any duplicate records.
 // 6. Submit the records as JSON objects named 'PaymentRecord' to a REST API url with an API key in the 'X-API-KEY' header.
-// 
+//
 // The API URL and API Key is configurable via arguments at launch time. **NOTE:** It is expected the API URL does not point to a working
-// service; however, you should assume if the service was working it would return valid HTTP status codes with errors. 
+// service; however, you should assume if the service was working it would return valid HTTP status codes with errors.
 //
 // For local testing purpose - a dummy API service code was provided into under the name dummy-api-service.go
 // It could easily be launched via `go run dummy-api-service.go` and handle POST API calls from this program.
@@ -24,57 +24,60 @@ package main
 // Created  : 01 August 2021
 
 import (
-
-	"fmt"
-	"log"
-	"os"
-	"io"
-	"flag"
 	"bytes"
-	"time"
-	"sync"
-	"os/exec"
-	"runtime"
-	"strings"
-	"net/http"
-	"net/url"
 	"crypto/rand"
 	"encoding/csv"
 	"encoding/json"
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"os/exec"
+	"runtime"
+	"strings"
+	"sync"
+	"time"
 )
 
 // A Record is a final structure of each record after the data file has been proccessed.
 type Record struct {
-	Date string `json:"date"`
-	Name string `json:"name"`
-	Address string `json:"address"`
-	Address2 string `json:"address2"`
-	City string `json:"city"`
-	State string `json:"state"`
-	Zipcode string `json:"zipcode"`
-	Telephone string `json:"telephone"`
-	Mobile string `json:"mobile"`
-	Amount string `json:"amount"`
-	Processor string `json:"processor"`
+	Date       string `json:"date"`
+	Name       string `json:"name"`
+	Address    string `json:"address"`
+	Address2   string `json:"address2"`
+	City       string `json:"city"`
+	State      string `json:"state"`
+	Zipcode    string `json:"zipcode"`
+	Telephone  string `json:"telephone"`
+	Mobile     string `json:"mobile"`
+	Amount     string `json:"amount"`
+	Processor  string `json:"processor"`
 	ImportDate string `json:"importdate"`
 }
 
-// A PaymentRecord is a structure to be used to build json string before posting to API. 
+// A PaymentRecord is a structure to be used to build json string before posting to API.
 type PaymentRecord struct {
 	PaymentRecord Record `json:"PaymentRecord"`
 }
 
 // waiting time before program exit at failure.
 const waitingTime = 3
+
 // maximum number of pool workers to POST records to API
-const maxworkers = 10 
+const maxworkers = 10
+
 // maximum waiting time to establish http connection.
 const timeout = 15
 
 // this stores the url to download the data file.
 var sourceURL string
+
 // this stores the api uri where to post records.
 var apiURL string
+
 // this stores the key to fill into X-API-KEY header.
 var apiKEY string
 
@@ -83,37 +86,38 @@ var clear map[string]func()
 
 // custom logger for program INFO only details.
 var logInfos *log.Logger
-// custom logger for program ERROR only details.
-var	logError *log.Logger
-// custom logger for saving successful sent payment record.
-var	logSuccessRecords *log.Logger
-// custom logger for saving failed to send payment record.
-var	logFailureRecords *log.Logger
 
+// custom logger for program ERROR only details.
+var logError *log.Logger
+
+// custom logger for saving successful sent payment record.
+var logSuccessRecords *log.Logger
+
+// custom logger for saving failed to send payment record.
+var logFailureRecords *log.Logger
 
 // init is an initializtion function that performs log files creation
 // and their associate logger handlers.
 func init() {
-	
+
 	// enforce the usage of all available cores on the computer
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	
+
 	// initialize the map of functions
 	clear = make(map[string]func())
 	// add function tp clear linux-based console
-	clear["linux"] = func(){
+	clear["linux"] = func() {
 		cmd := exec.Command("clear")
 		cmd.Stdout = os.Stdout
 		cmd.Run()
 	}
 	// add function to clear windows-based console
-	clear["windows"] = func(){
+	clear["windows"] = func() {
 		cmd := exec.Command("cmd", "/c", "cls")
 		cmd.Stdout = os.Stdout
 		cmd.Run()
 	}
 }
-
 
 // clearConsole is a function that clears the console
 // it exits the program if the OS is not supported.
@@ -127,13 +131,11 @@ func clearConsole() {
 	}
 }
 
-
 // Pause is a function that helps wait until the user press any key.
 func Pause(action string) {
 	fmt.Printf("\n\t\t{:} Press [Enter] key to %s", action)
 	fmt.Scanln()
 }
-
 
 // Banner is a function to display the program title.
 func Banner() {
@@ -146,10 +148,9 @@ func Banner() {
 	lgFrame := lgMsg + 40
 	// building a centered banner inside the frame.
 	fmt.Println("\n" + strings.Repeat("/", lgFrame))
-	fmt.Println(strings.Repeat("@", (lgFrame - lgMsg)/2) + bannerMsg + strings.Repeat("@", (lgFrame - lgMsg)/2))
-	fmt.Print(strings.Repeat("/", lgFrame),"\n\n\n")
+	fmt.Println(strings.Repeat("@", (lgFrame-lgMsg)/2) + bannerMsg + strings.Repeat("@", (lgFrame-lgMsg)/2))
+	fmt.Print(strings.Repeat("/", lgFrame), "\n\n\n")
 }
-
 
 // ExtractFilename is a function to retrieve the filename (expected to be the last part) from a url.
 func ExtractFilename(srcURL string) string {
@@ -164,16 +165,15 @@ func ExtractFilename(srcURL string) string {
 	// build a slice of each parts from the path.
 	parts := strings.Split(path, "/")
 	// filename as the last element of the slice.
-	filename := parts[len(parts) - 1]
+	filename := parts[len(parts)-1]
 
 	if len(filename) == 0 {
 		fmt.Print("[ FAILURE ]\n\n\t[-] please check log file for more detailed reason. // ")
 		logError.Fatal("program execution aborted - Errmsg: the link provided does not seems to load a file.")
 	}
-	
+
 	return filename
 }
-
 
 // downloadFile is a function that fetches the source data file from the given url
 // and save the content into the current directory for further usage by processFile.
@@ -183,11 +183,11 @@ func downloadFile() (string, string) {
 	logInfos.Println("extracting the filename from the url.")
 	filename := ExtractFilename(sourceURL)
 	logInfos.Println("extraction successfully completed.")
-	
+
 	logInfos.Print("downloading the content from the url.")
-	
+
 	// set the http connection timeout.
-	client := http.Client{Timeout: timeout * time.Second,}
+	client := http.Client{Timeout: timeout * time.Second}
 
 	// get the full file content
 	resp, err := client.Get(sourceURL)
@@ -224,7 +224,6 @@ func downloadFile() (string, string) {
 	return filename, time.Now().UTC().Format("01/02/2006")
 }
 
-
 // processFile is a function that loads the csv file from disk and performs in order these actions
 // 1/ remove "Memo" field. 2/ add "import_date" as new field and fill with current date
 // 3/ replace any emply value by "missing". 4/ remove duplicate records. 5/ POST each payment record.
@@ -255,7 +254,7 @@ func processFile(filename, importDate string) {
 	}
 	logInfos.Println("loading of records successfully completed.")
 	fmt.Println("[ SUCCESS ]")
-	
+
 	// no need to continue if the file does not have any records.
 	if len(allRecords) <= 1 {
 		logInfos.Println("the downloaded data file seems does not have records entries.")
@@ -303,7 +302,7 @@ func processFile(filename, importDate string) {
 	logInfos.Println("replacement of empty values successfully completed.")
 	fmt.Println("[ SUCCESS ]")
 
-	// this following section consists of removing any duplicate records 
+	// this following section consists of removing any duplicate records
 	// build a Record struct from each record element then add it to
 	// the map as key with empty struct as value for memory saving.
 	fmt.Print("\n\t[+] removing of any duplicate records ... ")
@@ -311,17 +310,17 @@ func processFile(filename, importDate string) {
 	mapOfRecords := make(map[Record]struct{})
 	for _, record := range allRecords {
 		r := Record{
-			Date: record[0],
-			Name: record[1],
-			Address: record[2],
-			Address2: record[3],
-			City: record[4],
-			State: record[5],
-			Zipcode: record[6],
-			Telephone: record[7],
-			Mobile: record[8],
-			Amount: record[9],
-			Processor: record[10],
+			Date:       record[0],
+			Name:       record[1],
+			Address:    record[2],
+			Address2:   record[3],
+			City:       record[4],
+			State:      record[5],
+			Zipcode:    record[6],
+			Telephone:  record[7],
+			Mobile:     record[8],
+			Amount:     record[9],
+			Processor:  record[10],
 			ImportDate: record[11],
 		}
 
@@ -332,15 +331,15 @@ func processFile(filename, importDate string) {
 	initNumOfRecords := len(allRecords)
 	// compute the non-duplicated number of records
 	currentNumOfRecords := len(mapOfRecords)
-	
+
 	logInfos.Printf("removal of %d duplicated records successfully completed.\n", (initNumOfRecords - currentNumOfRecords))
 	fmt.Println("[ SUCCESS ]")
 
 	// silently clear all records from the slice for memory optimization.
 	allRecords = nil
-	
+
 	// compute number of goroutines with a maximum of maxworkers.
-	numOfWorkers := int(len(mapOfRecords) / maxworkers) + 1
+	numOfWorkers := int(len(mapOfRecords)/maxworkers) + 1
 	if numOfWorkers > maxworkers {
 		numOfWorkers = maxworkers
 	}
@@ -359,14 +358,14 @@ func processFile(filename, importDate string) {
 	// goroutines to add each json record on the jobs channel for workers.
 	go addRecordsAsJobs(jobs, mapOfRecords)
 	logInfos.Println("goroutine to jsonify and add records to jobs channel started.")
-	
+
 	// goroutines to monitor results of all workers.
 	go aggregateResults(done, results, &successNum, &failureNum, len(mapOfRecords))
 	logInfos.Println("goroutine to monitor and compute success rate started.")
-	
+
 	fmt.Printf("\n\t[+] submission of all %d records to rest api backend ... [ STARTED ]\n\t\n", currentNumOfRecords)
 	logInfos.Printf("submission of all %d records to rest api backend started.\n", currentNumOfRecords)
-	
+
 	// creating a pool of pre-computed numOfWorkers workers and start them.
 	var wg sync.WaitGroup
 	for i := 0; i < numOfWorkers; i++ {
@@ -379,18 +378,18 @@ func processFile(filename, importDate string) {
 	// notify results channel that no more date will come in.
 	close(results)
 	// block here until we read true from the aggregate goroutine
-	<- done
+	<-done
 
 	logInfos.Println("submission of all records successfully completed.")
 	fmt.Println()
-	
+
 	// this value could be different from the total records number after the processing
 	// in case some payment records failed to be added to the jobs channel at json Marshalling.
 	sent := successNum + failureNum
 
 	// success rate is accurate only wi
 	successRate := (float64(successNum) / float64(sent)) * 100
-	
+
 	fmt.Printf("\n\t[+] Initial Records: %d / After processed: %d / sent: %d / success: %d / fails: %d / success rate: %.2f%%\n", initNumOfRecords, currentNumOfRecords, sent, successNum, failureNum, successRate)
 	// log as INFO the stats into the logging file
 	logInfos.Printf("Initial Records: %d / After proccessed: %d / sent: %d / success: %d / fails: %d / success rate: %.2f%%\n", initNumOfRecords, currentNumOfRecords, sent, successNum, failureNum, successRate)
@@ -399,9 +398,9 @@ func processFile(filename, importDate string) {
 // addRecordsAsJobs is function that will be used into a goroutine fashion to
 // pick each record from the map and build its associated payment record then
 // then marshall it into json and finally add it to the jobs channel for workers.
-func addRecordsAsJobs(jobs chan <- []byte, mapOfRecords map[Record]struct{}) {
+func addRecordsAsJobs(jobs chan<- []byte, mapOfRecords map[Record]struct{}) {
 	for r, _ := range mapOfRecords {
-		data, err := json.Marshal(PaymentRecord{PaymentRecord: r})	
+		data, err := json.Marshal(PaymentRecord{PaymentRecord: r})
 		if err != nil {
 			// unexpected to happen for each record - progression will not reach 100.00% but sucess rate will be accurate
 			// track by generating failure id and manually try to build and associated json payment record into stats log.
@@ -411,7 +410,7 @@ func addRecordsAsJobs(jobs chan <- []byte, mapOfRecords map[Record]struct{}) {
 			if d, e := json.Marshal(r); e == nil {
 				logFailureRecords.Printf("[sid: %s] {\"PaymentRecord\":%s}", sid, string(d))
 			} else {
-				// if failed to jsonify the record itslef then manually build 
+				// if failed to jsonify the record itslef then manually build
 				// the json string like formatted record and log it into stats file.
 				s := r.RecordToJson()
 				logFailureRecords.Printf("[sid: %s] {\"PaymentRecord\":%s}", sid, s)
@@ -425,23 +424,21 @@ func addRecordsAsJobs(jobs chan <- []byte, mapOfRecords map[Record]struct{}) {
 	close(jobs)
 }
 
-
 // RecordToJson is a function that converts a Record object into json string.
 func (r *Record) RecordToJson() string {
 	return fmt.Sprintf("{\"date\":%q,\"name\":%q,\"address\":%q,\"address2\":%q,\"city\":%q,\"state\":%q,\"zipcode\":%q,\"telephone\":%q,\"mobile\":%q,\"amount\":%q,\"processor\":%q,\"importdate\":%q}", r.Date, r.Name, r.Address, r.Address2, r.City, r.State, r.Zipcode, r.Telephone, r.Mobile, r.Amount, r.Processor, r.ImportDate)
 }
 
-
 // aggregateResults watchs the results channel and increment the number of success when hits true and
 // increment the number of fails when hits false. At the same time, displays real-time progression.
-func aggregateResults(done chan <- bool, results <- chan bool,  success *int, fails *int, numOfRecords int) {
+func aggregateResults(done chan<- bool, results <-chan bool, success *int, fails *int, numOfRecords int) {
 
 	total := 0
 	// monitor the results channel
 	for r := range results {
 		// increment the number of post submitted
 		total += 1
-		
+
 		if r == true {
 			// increment the success numbers
 			(*success) = (*success) + 1
@@ -453,7 +450,7 @@ func aggregateResults(done chan <- bool, results <- chan bool,  success *int, fa
 		}
 		// enable this below next line to mimic delay into submission progression display
 		time.Sleep(time.Duration(100) * time.Millisecond)
-		
+
 		fmt.Printf("\t[+] please wait ... all records submission progression : %2.2f%% [%d/%d]\r", ((float64(total) / float64(numOfRecords)) * 100), total, numOfRecords)
 	}
 
@@ -463,7 +460,7 @@ func aggregateResults(done chan <- bool, results <- chan bool,  success *int, fa
 
 // postWorker is a function that will be used as worker in charge of posting payment record
 // to the API service and add to the results channel either true or false if success or failure.
-func postWorker(wg *sync.WaitGroup, jobs <- chan []byte, results chan <- bool) {
+func postWorker(wg *sync.WaitGroup, jobs <-chan []byte, results chan<- bool) {
 	// loop over the channel of jobs and initiate separate API POST call.
 	for job := range jobs {
 		// based on status add true or false
@@ -476,20 +473,18 @@ func postWorker(wg *sync.WaitGroup, jobs <- chan []byte, results chan <- bool) {
 	wg.Done()
 }
 
-
-// generateID uses rand from crypto module to generate random ID into hexadecimal mode this value 
+// generateID uses rand from crypto module to generate random ID into hexadecimal mode this value
 // will be used as api call id (cid) and jsonify failure id (sid) for each payment record.
 func generateID() string {
 
 	// randomly fill the 8 capacity slice of bytes
 	b := make([]byte, 8)
-    if _, err := rand.Read(b); err != nil {
-    	// should not happen but if there - use the current nanosecond time into hexa 
-    	return fmt.Sprintf("%x", time.Now().UTC().UnixNano())
-    }
-    return fmt.Sprintf("%x", b)
- }
-
+	if _, err := rand.Read(b); err != nil {
+		// should not happen but if there - use the current nanosecond time into hexa
+		return fmt.Sprintf("%x", time.Now().UTC().UnixNano())
+	}
+	return fmt.Sprintf("%x", b)
+}
 
 // postPaymentRecord is a function to post a payment record to API service.
 func postPaymentRecord(jsonBytes []byte) bool {
@@ -502,7 +497,7 @@ func postPaymentRecord(jsonBytes []byte) bool {
 	request.Header.Set("Content-Type", "application/json")
 
 	// set the http connection timeout.
-	client := &http.Client{Timeout: timeout * time.Second,}
+	client := &http.Client{Timeout: timeout * time.Second}
 	response, err := client.Do(request)
 	if err != nil {
 		logError.Printf("failure to submit record - [cid: %s] - Errmsg: %v", cid, err)
@@ -540,7 +535,6 @@ func postPaymentRecord(jsonBytes []byte) bool {
 	return false
 }
 
-
 // setupLoggers is a function that create logs files and initialize loggers
 func setupLoggers() {
 
@@ -549,7 +543,7 @@ func setupLoggers() {
 	logTime := fmt.Sprintf("%d%02d%02d.%02d%02d%02d", startTime.Year(), startTime.Month(), startTime.Day(), startTime.Hour(), startTime.Minute(), startTime.Second())
 
 	// create the file to log execution details
-	programInfosFile, err := os.OpenFile("logging@" + logTime + ".log", os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0666)
+	programInfosFile, err := os.OpenFile("logging@"+logTime+".log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		fmt.Printf(" [-] Program aborted. failed to create log file for program execution infos - Errmsg: %v", err)
 		time.Sleep(waitingTime * time.Second)
@@ -557,7 +551,7 @@ func setupLoggers() {
 	}
 
 	// create the file to log post status of all payment records submitted
-	recordsStatsFile, err := os.OpenFile("statistics@" + logTime + ".log", os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0666)
+	recordsStatsFile, err := os.OpenFile("statistics@"+logTime+".log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		fmt.Printf(" [-] Program aborted. failed to create log file to track records submission statistics - Errmsg: %v", err)
 		time.Sleep(waitingTime * time.Second)
@@ -570,7 +564,6 @@ func setupLoggers() {
 	logSuccessRecords = log.New(recordsStatsFile, "[ SUCCESS ] ", 0)
 	logFailureRecords = log.New(recordsStatsFile, "[ FAILURE ] ", 0)
 }
-
 
 func main() {
 
@@ -586,7 +579,7 @@ func main() {
 	flag.StringVar(&apiKEY, "key", "", "Post payment records - specify the api key to be used")
 
 	// check for subcommands : version or help
-	if len(os.Args) == 2 { 
+	if len(os.Args) == 2 {
 		if os.Args[1] == "version" || os.Args[1] == "--version" || os.Args[1] == "-v" {
 			fmt.Fprintf(os.Stderr, "\n%s\n", version)
 			os.Exit(0)
@@ -606,7 +599,7 @@ func main() {
 	}
 
 	// -api and -key are mandatory options. stop the program if not provided.
-	if (apiURL == "" || apiKEY == "") {
+	if apiURL == "" || apiKEY == "" {
 		flag.Usage()
 		os.Exit(0)
 	}
@@ -622,7 +615,6 @@ func main() {
 
 	Pause("exit")
 }
-
 
 const version = "current version 1.0 By jeamon@e-company.com"
 
