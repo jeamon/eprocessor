@@ -1,26 +1,25 @@
-// This program is a command-line tool built by e-COMPANY for automated payment records data processing.
 package main
 
-// =======================================================================
-// @@@@@@@@@@@@@@@@@ E-COMPANY CSV-BASED FILE PROCESSOR @@@@@@@@@@@@@@@@@
-// =======================================================================
-// This program downloads a csv file and perform at least these below actions :
+// This program is a command-line tool built by e-COMPANY for automated payment records data processing.
+// The program named `eprocessor` performs into its current version, at least these below actions :
+//
 // 1. Download the structured data file from https://s3.amazonaws.com/ecompany/data.csv.
 // 2. Remove the field named 'Memo' from all records.
 // 3. Add a field named "import_date" and populate it appropriately.
-// 4. For any record that has an empty value, set the value of the field to the value "missing".
+// 4. For any empty value, set the value of the field to the value "missing".
 // 5. Remove any duplicate records.
-// 6. Submit the records as JSON objects named 'PaymentRecord' to a REST API url with an API key in the 'X-API-KEY' header.
+// 6. Submit each record as JSON object named 'PaymentRecord' to a REST API with a key in 'X-API-KEY' header.
 //
-// The API URL and API Key is configurable via arguments at launch time. **NOTE:** It is expected the API URL does not point to a working
-// service; however, you should assume if the service was working it would return valid HTTP status codes with errors.
+// The Download URL and API URL and API Key are configurable via arguments at launch time. Check help details.
+// The API service return valid HTTP status codes with errors. Check the backend service documentation.
 //
-// For local testing purpose - a dummy API service code was provided into under the name dummy-api-service.go
-// It could easily be launched via `go run dummy-api-service.go` and handle POST API calls from this program.
+// For local testing purpose - a dummy backend server was provided into under the name dummy-backend-server.go
+// It could be run from source by `go run dummy-backend-server.go` and serve a sample data and handle POST calls.
 //
-// version  : 1.0
-// author   : Jerome AMON
-// Email    : jeromeamon@e-company.com
+// To contact the author for any feedback or cooperation, use this link https://blog.cloudmentor-scale.com/contact
+//
+// Version  : 1.0
+// Author   : Jerome AMON
 // Created  : 01 August 2021
 
 import (
