@@ -2,6 +2,8 @@
 
 eprocessor is a simple Go-based tool to process a specific and well formatted csv-based file.
 
+* Click to watch the live [demo video](https://youtu.be/vcIizhXkPwg)
+
 
 ## General info
 
@@ -14,7 +16,7 @@ Once launched the program will perform at least these below operations in same o
 5. Remove any duplicate records.
 6. Submit the records as JSON objects named 'PaymentRecord' to a REST API url with an API key in the 'X-API-KEY' header.
 
-The REST API URL and API KEY are configurable at lauching time via positional arguments.  Also the program has been
+The REST API URL and API KEY are configurable at launching time via positional arguments.  Also the program has been
 improved to allow the data source URL to be configurable at lauching time. see [Usage](#Usage) section for some examples.
 
 The repository contains a folder named bonus. Inside you will find a dummy api service and a sample data for testing locally the tool.
@@ -26,6 +28,8 @@ Finally, at each launch of the eprocessor tool, a logging file will be generated
 It will contains the program logs such as errors and infos level details. Also, a second log file will be created with same datetime
 under the name of statistics@currentdate.currenttime.log and will contains all records sent with SUCCESS or FAILURE as prefic according
 to the API POST call response.
+
+* Click to watch the live [demo video](https://youtu.be/vcIizhXkPwg)
 
 
 ## Technologies
@@ -52,6 +56,8 @@ go build dummy-backend-server.go
 
 
 ## Usage
+
+* You can quickly watch the demo from this youtube link [demo video](https://youtu.be/vcIizhXkPwg)
 
 ```Usage:
     
@@ -164,7 +170,7 @@ ok      github.com/jeamon/eprocessor    0.219s
 
 ## Contribution
 
-Pull requests are welcome. However, I would be glad to be contacted first for discussion before.
+Pull requests are welcome. However, I would be glad to be contacted for discussion before.
 
 
 ## License
