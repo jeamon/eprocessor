@@ -5,7 +5,18 @@ eprocessor is a simple Go-based tool to process a specific and well formatted cs
 * Click to watch the live [demo video](https://youtu.be/vcIizhXkPwg)
 
 
-## General info
+## Table of contents
+* [Description](#description)
+* [Technologies](#technologies)
+* [Setup](#setup)
+* [Usage](#usage)
+* [Outputs](#outputs)
+* [Testing](#testing)
+* [Contribution](#contribution)
+* [License](#license)
+
+
+## Description
 
 Once launched the program will perform at least these below operations in same order :
 
@@ -17,16 +28,19 @@ Once launched the program will perform at least these below operations in same o
 6. Submit the records as JSON objects named 'PaymentRecord' to a REST API url with an API key in the 'X-API-KEY' header.
 
 The REST API URL and API KEY are configurable at launching time via positional arguments.  Also the program has been
-improved to allow the data source URL to be configurable at lauching time. see [Usage](#Usage) section for some examples.
+improved to allow the data source URL to be configurable at lauching time. When adding -save option, provided arguments will
+be saved as environnement variables on your system for futher usage without mentionning then again. If successfully set then
+*"EPROCESSOR_API_URL"* is for the API URL and *"EPROCESSOR_API_KEY"* is for the API KEY and *"EPROCESSOR_SOURCE_URL"* for the SOURCE URL.
+See [Usage](#Usage) section for some practical examples with local dummy backend server and sample data test.
 
 The repository contains a folder named bonus. Inside you will find a dummy api service and a sample data for testing locally the tool.
-Once launched, this server expects to receive request for data downloading at http://localhost:8080/data.csv and payment records post call
-at http://127.0.0.1:8080/records with a custom header (X-API-KEY) set with "very-long-complex-key" as value. For each payment record received
+Once launched, this server expects to receive request for data downloading at *http://localhost:8080/data.csv* and payment records post call
+at *http://127.0.0.1:8080/records* with a custom header *(X-API-KEY)* set with "very-long-complex-key" as value. For each payment record received
 it will just display that on the console for confirmation purpose.
 
-Finally, at each launch of the eprocessor tool, a logging file will be generated in the format of logging@currentdate.currenttime.log
+Finally, at each launch of the eprocessor tool, a logging file will be generated in the format of logging*currentdate*currenttime.log
 It will contains the program logs such as errors and infos level details. Also, a second log file will be created with same datetime
-under the name of statistics@currentdate.currenttime.log and will contains all records sent with SUCCESS or FAILURE as prefic according
+under the name of statistics*currentdate*currenttime.log and will contains all records sent with SUCCESS or FAILURE as prefic according
 to the API POST call response.
 
 * Click to watch the live [demo video](https://youtu.be/vcIizhXkPwg)
@@ -39,7 +53,7 @@ This project is developed with:
 * Native libraries only
 
 
-## Installation
+## Setup
 
 On Windows, Linux macOS, and FreeBSD you will be able to download the pre-built binaries once available.
 If your system has [Go 1.13+](https://golang.org/dl/), you can pull the codebase and build from the source.
@@ -61,7 +75,7 @@ go build dummy-backend-server.go
 
 ```Usage:
     
-    eprocessor [-data  <download-link-of-the-data>] [-api  <url-of-the-api-service>] [-key  <value-of-the-api-key>]
+    eprocessor [-source  <download-link-of-the-data>] [-api  <url-of-the-api-service>] [-key  <value-of-the-api-key>] [-save]
 
 Subcommands:
     version    Display the current version of this tool.
@@ -72,6 +86,7 @@ Options:
     -api      Specify the API URL where the payment records will be posted.
     -key      Specify the key to use into the custom HTTP header 'X-API-KEY'.
     -source   Specify the full URL (inc. filename) for download the data.
+    -save     If present then provided arguments would be saved as env variables for later use.
     
 
 Arguments:
@@ -79,15 +94,20 @@ Arguments:
     value-of-the-api-key       value of the X-API-KEY header.
     download-link-of-the-data  url from where to fetch the data.
 
-You have to provide at least the two mandatory arguments values [-api and -key]. Upcoming 
-version will integrate the capability to launch the tool without any arguments and later be 
-prompted to provide at least the two options values (or load them from environnement variables).
-In case the source data url link is not provided, it will use the default link. check the 
-documentation to view it. Below the two ways to run the current version of this csv processing tool.
+You have to provide at least the two mandatory arguments values [-api and -key]. In case
+you want to launch the tool without any arguments make sure the required parameters are
+set as environnement variables ["EPROCESSOR_API_URL" and "EPROCESSOR_API_KEY"] on your system.
+In case the source url is not provided or not set as environnement variable ["EPROCESSOR_SOURCE_URL"],
+the default link will be used (check the documentation). To have the the parameters set as environnement
+variables for the first time, just add -save flag when launching the program. See below third example.
+
 
 Examples:
+	$ eprocessor
     $ eprocessor -api https://ecompany.com/v1/paymentsrecords -key complex-api-key
     $ eprocessor -source https://ecompany.com/data.csv -api https://ecompany.com/v1/paymentsrecords -key complex-api-key
+    $ eprocessor -source https://ecompany.com/data.csv -api https://ecompany.com/v1/paymentsrecords -key complex-api-key -save
+	
 ```
 
 
@@ -105,8 +125,11 @@ Examples:
 * For local testing. Make sure backend service is Up. Then run the eprocessor tool from the command line
 
 ```
-# Running the eprocessor from the source code
+# Running the eprocessor from the source code with mention of source url and api url and api key options
 ~$ go run eprocessor.go -source http://localhost:8080/data.csv -api http://127.0.0.1:8080/records -key my-key
+
+# Running the eprocessor from the source code with mention of source url and api url and api key and save flag options
+~$ go run eprocessor.go -source http://localhost:8080/data.csv -api http://127.0.0.1:8080/records -key my-key -save
 
 # Running the eprocessor on windows from the executable file (for linux - set the permission on it before)
 ~$ eprocessor.exe -source http://localhost:8080/data.csv -api http://127.0.0.1:8080/records -key my-key
