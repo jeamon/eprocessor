@@ -564,20 +564,43 @@ func setupLoggers() {
 	logFailureRecords = log.New(recordsStatsFile, "[ FAILURE ] ", 0)
 }
 
-func main() {
+// loadParameters is a function that process provided arguments or load from environnment variables.
+func loadParameters() {
 
-	// set the default download url - to be used if not provided.
-	sourceURL = "https://s3.amazonaws.com/ecompany/data.csv"
-
-	// will be triggered to display help instructions.
+	// will be triggered to display usage instructions.
 	flag.Usage = func() { fmt.Fprintf(os.Stderr, "%s\n", usage) }
 
-	// configure all flags with globally declared variables
+	// configure all flags with globally declared variables.
 	flag.StringVar(&sourceURL, "source", sourceURL, "Download data file - specify url from where to fetch")
 	flag.StringVar(&apiURL, "api", "", "Post payment records - specify the api url where to send")
 	flag.StringVar(&apiKEY, "key", "", "Post payment records - specify the api key to be used")
 
-	// check for subcommands : version or help
+	// declare the boolean flag save. if mentioned save provided values as environnement variables.
+	savePtr := flag.Bool("save", false, "Specify if provided arguments should be saved for later usage")
+
+	// nothing provided as parameters then load from env variables.
+	if len(os.Args) == 1 {
+		// lets try to load env
+		envURL := os.Getenv("EPROCESSOR_SOURCE_URL")
+		apiURL = os.Getenv("EPROCESSOR_API_URL")
+		apiKEY = os.Getenv("EPROCESSOR_API_KEY")
+
+		// not present or empty then use the default source url
+		if envURL != "" {
+			sourceURL = envURL
+		}
+
+		// mandaroty options not set as env variables or are empty - notify the user and abort the program.
+		if len(apiURL) == 0 || len(apiKEY) == 0 {
+			fmt.Print("\nRequired environnement variables may not exist on the system or they are empty.\nCheck if 'EPROCESSOR_API_URL' and 'EPROCESSOR_API_KEY' are present and not empty.\n\n")
+			fmt.Fprintf(os.Stderr, "\n%s\n", usage)
+			os.Exit(0)
+		}
+		// all good leave this function and continue the program flow.
+		return
+	}
+
+	// check for valid subcommands : version or help
 	if len(os.Args) == 2 {
 		if os.Args[1] == "version" || os.Args[1] == "--version" || os.Args[1] == "-v" {
 			fmt.Fprintf(os.Stderr, "\n%s\n", version)
@@ -590,9 +613,21 @@ func main() {
 
 	// parse the arguments only number of args matches
 	// expected number (included the program name itself).
-	if len(os.Args) == 5 || len(os.Args) == 7 {
+	switch len(os.Args) {
+	case 5:
+	// -api -key options probably provided.
 		flag.Parse()
-	} else {
+	case 6:
+	// -api -key -save options probably provided.
+		flag.Parse()
+	case 7:
+	// -source -api -key options probably provided.
+		flag.Parse()
+	case 8:
+	// -source -api -key -save options probably provided.
+		flag.Parse()
+	default:
+	// unknow options combinaison - abort the program.
 		flag.Usage()
 		os.Exit(0)
 	}
@@ -602,7 +637,21 @@ func main() {
 		flag.Usage()
 		os.Exit(0)
 	}
+	// user asked to save provided parameters as env variables
+	// this may silently fail to be setup. Let user know into help.
+	if (*savePtr) {
+		os.Setenv("EPROCESSOR_API_URL", apiURL)
+		os.Setenv("EPROCESSOR_API_KEY", apiKEY)
+		os.Setenv("EPROCESSOR_SOURCE_URL", sourceURL)
+	}
+}
 
+func main() {
+
+	// set the default download url - to be used if not provided.
+	sourceURL = "https://s3.amazonaws.com/ecompany/data.csv"
+	// process arguments or load from env variables.
+	loadParameters()
 	// display the banner
 	Banner()
 	// setup all loggers
@@ -619,7 +668,7 @@ const version = "current version 1.0 By jeamon@e-company.com"
 
 const usage = `Usage:
     
-    eprocessor [-data  <download-link-of-the-data>] [-api  <url-of-the-api-service>] [-key  <value-of-the-api-key>]
+    eprocessor [-source  <download-link-of-the-data>] [-api  <url-of-the-api-service>] [-key  <value-of-the-api-key>] [-save]
 
 Subcommands:
     version    Display the current version of this tool.
@@ -630,6 +679,7 @@ Options:
     -api      Specify the API URL where the payment records will be posted.
     -key      Specify the key to use into the custom HTTP header 'X-API-KEY'.
     -source   Specify the full URL (inc. filename) for download the data.
+    -save     If present then provided arguments would be saved as env variables for later use.
     
 
 Arguments:
@@ -637,12 +687,16 @@ Arguments:
     value-of-the-api-key       value of the X-API-KEY header.
     download-link-of-the-data  url from where to fetch the data.
 
-You have to provide at least the two mandatory arguments values [-api and -key]. Upcoming 
-version will integrate the capability to launch the tool without any arguments and later be 
-prompted to provide at least the two options values (or load them from environnement variables).
-In case the source data url link is not provided, it will use the default link. check the 
-documentation to view it. Below the two ways to run the current version of this csv processing tool.
+You have to provide at least the two mandatory arguments values [-api and -key]. In case
+you want to launch the tool without any arguments make sure the required parameters are
+set as environnement variables ["EPROCESSOR_API_URL" and "EPROCESSOR_API_KEY"] on your system.
+In case the source url is not provided or not set as environnement variable ["EPROCESSOR_SOURCE_URL"],
+the default link will be used (check the documentation). To have the the parameters set as environnement
+variables for the first time, just add -save flag when launching the program. See below third example.
+
 
 Examples:
+	$ eprocessor
     $ eprocessor -api https://ecompany.com/v1/paymentsrecords -key complex-api-key
-    $ eprocessor -source https://ecompany.com/data.csv -api https://ecompany.com/v1/paymentsrecords -key complex-api-key`
+    $ eprocessor -source https://ecompany.com/data.csv -api https://ecompany.com/v1/paymentsrecords -key complex-api-key
+    $ eprocessor -source https://ecompany.com/data.csv -api https://ecompany.com/v1/paymentsrecords -key complex-api-key -save`
