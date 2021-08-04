@@ -448,7 +448,7 @@ func aggregateResults(done chan<- bool, results <-chan bool, success *int, fails
 			(*fails) = (*fails) + 1
 		}
 		// enable this below next line to mimic delay into submission progression display
-		time.Sleep(time.Duration(100) * time.Millisecond)
+		// time.Sleep(time.Duration(10) * time.Millisecond)
 
 		fmt.Printf("\t[+] please wait ... all records submission progression : %2.2f%% [%d/%d]\r", ((float64(total) / float64(numOfRecords)) * 100), total, numOfRecords)
 	}
