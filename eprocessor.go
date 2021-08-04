@@ -306,30 +306,12 @@ func processFile(filename, importDate string) {
 	// the map as key with empty struct as value for memory saving.
 	fmt.Print("\n\t[+] removing of any duplicate records ... ")
 	logInfos.Println("removal of any duplicate records started.")
+	
 	mapOfRecords := make(map[Record]struct{})
-	for _, record := range allRecords {
-		r := Record{
-			Date:       record[0],
-			Name:       record[1],
-			Address:    record[2],
-			Address2:   record[3],
-			City:       record[4],
-			State:      record[5],
-			Zipcode:    record[6],
-			Telephone:  record[7],
-			Mobile:     record[8],
-			Amount:     record[9],
-			Processor:  record[10],
-			ImportDate: record[11],
-		}
-
-		mapOfRecords[r] = struct{}{}
-	}
-
 	// compute the initial number of records
 	initNumOfRecords := len(allRecords)
-	// compute the non-duplicated number of records
-	currentNumOfRecords := len(mapOfRecords)
+	// remove duplicate entries and get the final non-duplicated number of records
+	currentNumOfRecords := RemoveDuplicateRecords(&allRecords, mapOfRecords)
 
 	logInfos.Printf("removal of %d duplicated records successfully completed.\n", (initNumOfRecords - currentNumOfRecords))
 	fmt.Println("[ SUCCESS ]")
@@ -394,7 +376,33 @@ func processFile(filename, importDate string) {
 	logInfos.Printf("Initial Records: %d / After proccessed: %d / sent: %d / success: %d / fails: %d / success rate: %.2f%%\n", initNumOfRecords, currentNumOfRecords, sent, successNum, failureNum, successRate)
 }
 
-// addRecordsAsJobs is function that will be used into a goroutine fashion to
+// RemoveDuplicateRecords is a function that process the slice of slice of records (into string format) and will use MAP structure unique key capability
+// to remove any duplicate Record structure. The key will be a Record structure so that record cannot be inserted again into the map. In Go, map
+// is by defaut pass by reference. So we just need to modify the inner state of the map passed to the function.
+func RemoveDuplicateRecords(records *[][]string, mapOfRecords map[Record]struct{}) int {
+	for _, record := range (*records) {
+		r := Record{
+			Date:       record[0],
+			Name:       record[1],
+			Address:    record[2],
+			Address2:   record[3],
+			City:       record[4],
+			State:      record[5],
+			Zipcode:    record[6],
+			Telephone:  record[7],
+			Mobile:     record[8],
+			Amount:     record[9],
+			Processor:  record[10],
+			ImportDate: record[11],
+		}
+		// insert the record with empty struct as value
+		mapOfRecords[r] = struct{}{}
+	}
+
+	return len(mapOfRecords)
+}
+
+// addRecordsAsJobs is a function that will be used into a goroutine fashion to
 // pick each record from the map and build its associated payment record then
 // then marshall it into json and finally add it to the jobs channel for workers.
 func addRecordsAsJobs(jobs chan<- []byte, mapOfRecords map[Record]struct{}) {
