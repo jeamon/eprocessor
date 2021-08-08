@@ -33,8 +33,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -175,8 +175,8 @@ func ExtractFilename(srcURL string) string {
 }
 
 // downloadFile is a function that fetches the source data file from the given url
-// and save the content into the current directory for further usage by processFile.
-func downloadFile() (string, string) {
+// and save the content into the working directory for further usage by processFile.
+func downloadFile(workfolder string) (string, string) {
 	fmt.Print("\n\t[+] downloading the formatted file from the url ... ")
 
 	logInfos.Println("extracting the filename from the url.")
@@ -199,7 +199,8 @@ func downloadFile() (string, string) {
 
 	logInfos.Println("creating destination file for saving.")
 	// create an empty destination file.
-	dest, err := os.Create(filename)
+	filepath := fmt.Sprint(workfolder + string(os.PathSeparator) + filename)
+	dest, err := os.Create(filepath)
 
 	if err != nil {
 		fmt.Print("[ FAILURE ]\n\n\t[-] please check log file for more detailed reason. // ")
@@ -219,19 +220,19 @@ func downloadFile() (string, string) {
 	logInfos.Printf("saving of file %s successfully completed.", filename)
 	fmt.Println("[ SUCCESS ]")
 
-	// return the name of the file with current date into UTC+0.
-	return filename, time.Now().UTC().Format("01/02/2006")
+	// return the full path of the file with current date into UTC+0.
+	return filepath, time.Now().UTC().Format("01/02/2006")
 }
 
 // processFile is a function that loads the csv file from disk and performs in order these actions
 // 1/ remove "Memo" field. 2/ add "import_date" as new field and fill with current date
 // 3/ replace any emply value by "missing". 4/ remove duplicate records. 5/ POST each payment record.
-func processFile(filename, importDate string) {
+func processFile(filepath, importDate string) {
 
 	fmt.Print("\n\t[+] opening csv file from disk for processing ... ")
 
 	logInfos.Println("opening csv file from disk for processing.")
-	csvFile, err := os.Open(filename)
+	csvFile, err := os.Open(filepath)
 	if err != nil {
 		fmt.Print("[ FAILURE ]\n\n\t[-] please check log file for more detailed reason. // ")
 		logError.Fatalf("failed to load the file - Errmsg: %v", err)
@@ -542,15 +543,25 @@ func postPaymentRecord(jsonBytes []byte) bool {
 	return false
 }
 
-// setupLoggers is a function that create logs files and initialize loggers
-func setupLoggers() {
+// setupLoggers is a function that create dedicated working directory
+// and create logs files inside it and initialize all loggers at each
+// launch the folder's name follows this pattern log@year.month.day.hour.min.sec .
+func setupLoggers() string {
 
 	// get current launch time and build log file name
 	startTime := time.Now()
 	logTime := fmt.Sprintf("%d%02d%02d.%02d%02d%02d", startTime.Year(), startTime.Month(), startTime.Day(), startTime.Hour(), startTime.Minute(), startTime.Second())
 
+	// create dedicated log folder for each launch of the program.
+	folder := fmt.Sprintf("log@%s", logTime)
+	if err := os.Mkdir(folder, 0755); err != nil {
+		fmt.Printf(" [-] Program aborted. failed to create the dedicated log folder - Errmsg: %v", err)
+		time.Sleep(waitingTime * time.Second)
+		os.Exit(1)
+	}
+
 	// create the file to log execution details
-	programInfosFile, err := os.OpenFile("logging@"+logTime+".log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	programInfosFile, err := os.OpenFile(folder+string(os.PathSeparator)+"details.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		fmt.Printf(" [-] Program aborted. failed to create log file for program execution infos - Errmsg: %v", err)
 		time.Sleep(waitingTime * time.Second)
@@ -558,7 +569,7 @@ func setupLoggers() {
 	}
 
 	// create the file to log post status of all payment records submitted
-	recordsStatsFile, err := os.OpenFile("statistics@"+logTime+".log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	recordsStatsFile, err := os.OpenFile(folder+string(os.PathSeparator)+"statistics.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		fmt.Printf(" [-] Program aborted. failed to create log file to track records submission statistics - Errmsg: %v", err)
 		time.Sleep(waitingTime * time.Second)
@@ -570,6 +581,8 @@ func setupLoggers() {
 	logError = log.New(programInfosFile, "[ ERROR ] ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
 	logSuccessRecords = log.New(recordsStatsFile, "[ SUCCESS ] ", 0)
 	logFailureRecords = log.New(recordsStatsFile, "[ FAILURE ] ", 0)
+
+	return folder
 }
 
 // loadParameters is a function that process provided arguments or load from environnment variables.
@@ -662,12 +675,13 @@ func main() {
 	loadParameters()
 	// display the banner
 	Banner()
-	// setup all loggers
-	setupLoggers()
+	// configure all loggers and return created folder name which will be
+	// used as working directory. Needed to save later the download file.
+	workfolder := setupLoggers()
 	// download and save file locally
-	filename, importDate := downloadFile()
+	filepath, importDate := downloadFile(workfolder)
 	// process the downloaded csv file
-	processFile(filename, importDate)
+	processFile(filepath, importDate)
 
 	Pause("exit")
 }
