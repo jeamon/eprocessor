@@ -264,43 +264,22 @@ func processFile(filepath, importDate string) {
 		return
 	}
 
+	// section to remove Memo field from each record and add import date field into each.
 	fmt.Print("\n\t[+] removing of \"Memo\" field from all records ... ")
 	logInfos.Println("removing of \"Memo\" field from all records.")
-	// retrieve the headers names - first row
-	headers := allRecords[0]
-
-	// compute the index of Memo into the slice headers
-	memoIndex := -1
-	for i, header := range headers {
-		if header == "Memo" {
-			memoIndex = i
-			break
-		}
-	}
-
-	// remove all Memo value using re-slicing in case we found the field before
-	if memoIndex != -1 {
-		for i, record := range allRecords {
-			// remove the memoIndex and append importation date to the record
-			allRecords[i] = append(append(record[:memoIndex], record[memoIndex+1:]...), importDate)
-		}
-	}
+	// pass by reference the records for processing.
+	RemoveMemoField(&allRecords, importDate)
 	logInfos.Println("removal of Memo field successfully completed.")
 	fmt.Println("[ SUCCESS ]")
 
-	// remove headers record - first element from allRecords slice
+	// remove headers record - first element from allRecords slice.
 	allRecords = allRecords[1:]
 
-	// replace any empty value by "missing" for all records
+	// section to replace any empty value by "missing" for all records.
 	fmt.Print("\n\t[+] replacing all empty values by \"missing\" ... ")
 	logInfos.Println("replacement of all empty values by \"missing\" started.")
-	for _, record := range allRecords {
-		for i, v := range record {
-			if len(strings.TrimSpace(v)) == 0 {
-				record[i] = "missing"
-			}
-		}
-	}
+	// pass by reference the records for prcessing.
+	ReplaceEmptyValues(&allRecords)
 	logInfos.Println("replacement of empty values successfully completed.")
 	fmt.Println("[ SUCCESS ]")
 
@@ -313,7 +292,7 @@ func processFile(filepath, importDate string) {
 	mapOfRecords := make(map[Record]struct{})
 	// compute the initial number of records
 	initNumOfRecords := len(allRecords)
-	// remove duplicate entries and get the final non-duplicated number of records
+	// remove duplicate entries and get the final non-duplicated number of records.
 	currentNumOfRecords := RemoveDuplicateRecords(&allRecords, mapOfRecords)
 
 	logInfos.Printf("removal of %d duplicated records successfully completed.\n", (initNumOfRecords - currentNumOfRecords))
@@ -377,6 +356,42 @@ func processFile(filepath, importDate string) {
 	fmt.Printf("\n\t[+] Initial Records: %d / After processed: %d / sent: %d / success: %d / fails: %d / success rate: %.2f%%\n", initNumOfRecords, currentNumOfRecords, sent, successNum, failureNum, successRate)
 	// log as INFO the stats into the logging file
 	logInfos.Printf("Initial Records: %d / After proccessed: %d / sent: %d / success: %d / fails: %d / success rate: %.2f%%\n", initNumOfRecords, currentNumOfRecords, sent, successNum, failureNum, successRate)
+}
+
+// ReplaceEmptyValues is a function that process the slice of slice of records (into string format) and will
+// replace each field value which is empyt by the string  value "missing".
+func ReplaceEmptyValues(records *[][]string) {
+	for _, record := range *records {
+		for i, v := range record {
+			if len(strings.TrimSpace(v)) == 0 {
+				record[i] = "missing"
+			}
+		}
+	}
+}
+
+// RemoveMemoField is a function that process the slice of slice of records (into string format) and will remove
+// the colunm / field named Memo from all these records. And add & fill another colunm named import_date.
+func RemoveMemoField(records *[][]string, importDate string) {
+	// retrieve the headers names - which is the first row.
+	headers := (*records)[0]
+	// find the index of Memo field into that slice of headers if Memo
+	// field not present then -1 will remained for later checking.
+	memoIndex := -1
+	for i, header := range headers {
+		if header == "Memo" {
+			memoIndex = i
+			break
+		}
+	}
+
+	// remove all Memo value using re-slicing in case we found the field before
+	if memoIndex != -1 {
+		for i, record := range *records {
+			// remove the memoIndex and append importation date to the record
+			(*records)[i] = append(append(record[:memoIndex], record[memoIndex+1:]...), importDate)
+		}
+	}
 }
 
 // RemoveDuplicateRecords is a function that process the slice of slice of records (into string format) and will use MAP structure unique key capability
