@@ -33,11 +33,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os/exec"
 	"os"
+	"os/exec"
+	"os/signal"
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -307,7 +309,7 @@ func processFile(filepath, importDate string) {
 	// the map as key with empty struct as value for memory saving.
 	fmt.Print("\n\t[+] removing of any duplicate records ... ")
 	logInfos.Println("removal of any duplicate records started.")
-	
+
 	mapOfRecords := make(map[Record]struct{})
 	// compute the initial number of records
 	initNumOfRecords := len(allRecords)
@@ -381,7 +383,7 @@ func processFile(filepath, importDate string) {
 // to remove any duplicate Record structure. The key will be a Record structure so that record cannot be inserted again into the map. In Go, map
 // is by defaut pass by reference. So we just need to modify the inner state of the map passed to the function.
 func RemoveDuplicateRecords(records *[][]string, mapOfRecords map[Record]struct{}) int {
-	for _, record := range (*records) {
+	for _, record := range *records {
 		r := Record{
 			Date:       record[0],
 			Name:       record[1],
@@ -636,19 +638,19 @@ func loadParameters() {
 	// expected number (included the program name itself).
 	switch len(os.Args) {
 	case 5:
-	// -api -key options probably provided.
+		// -api -key options probably provided.
 		flag.Parse()
 	case 6:
-	// -api -key -save options probably provided.
+		// -api -key -save options probably provided.
 		flag.Parse()
 	case 7:
-	// -source -api -key options probably provided.
+		// -source -api -key options probably provided.
 		flag.Parse()
 	case 8:
-	// -source -api -key -save options probably provided.
+		// -source -api -key -save options probably provided.
 		flag.Parse()
 	default:
-	// unknow options combinaison - abort the program.
+		// unknow options combinaison - abort the program.
 		flag.Usage()
 		os.Exit(0)
 	}
@@ -660,15 +662,33 @@ func loadParameters() {
 	}
 	// user asked to save provided parameters as env variables
 	// this may silently fail to be setup. Let user know into help.
-	if (*savePtr) {
+	if *savePtr {
 		os.Setenv("EPROCESSOR_API_URL", apiURL)
 		os.Setenv("EPROCESSOR_API_KEY", apiKEY)
 		os.Setenv("EPROCESSOR_SOURCE_URL", sourceURL)
 	}
 }
 
-func main() {
+// processSignal is a function that process some common signals comming from user or os
+// SIGTERM or kill -6 / SIGKILL or kill -9 / SIGNINT or kill -2 or CTRL+C / SIGQUIT etc.
+func processSignal() {
+	sigch := make(chan os.Signal, 1)
+	// add needed to intercept signals type here.
+	signal.Notify(sigch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGHUP, os.Interrupt, os.Kill)
+	// block on channel read until something comes in.
+	// to debug signal name use this signalType := <-sigch
+	// and fmt.Println("received signal type: ", signalType)
+	<-sigch
+	signal.Stop(sigch)
+	// if needed add from here any cleanup actions before terminating.
+	// below lines just stop the program and leave immediately.
+	fmt.Println()
+	os.Exit(0)
+}
 
+func main() {
+	// background routine to handle exit signals.
+	go processSignal()
 	// set the default download url - to be used if not provided.
 	sourceURL = "https://s3.amazonaws.com/ecompany/data.csv"
 	// process arguments or load from env variables.
