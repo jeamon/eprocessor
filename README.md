@@ -12,6 +12,7 @@ eprocessor is a simple Go-based tool to process a specific and well formatted cs
 * [Usage](#usage)
 * [Outputs](#outputs)
 * [Testing](#testing)
+* [Upcomings](#upcomings)
 * [Contribution](#contribution)
 * [License](#license)
 
@@ -38,10 +39,10 @@ Once launched, this server expects to receive request for data downloading at *h
 at *http://127.0.0.1:8080/records* with a custom header *(X-API-KEY)* set with "very-long-complex-key" as value. For each payment record received
 it will just display that on the console for confirmation purpose.
 
-Finally, at each launch of the eprocessor tool, a logging file will be generated in the format of logging*currentdate*currenttime.log
-It will contains the program logs such as errors and infos level details. Also, a second log file will be created with same datetime
-under the name of statistics*currentdate*currenttime.log and will contains all records sent with SUCCESS or FAILURE as prefic according
-to the API POST call response.
+Finally, at each launch of the eprocessor tool, a dedicated working folder will be created with the name matching the pattern loggingATcurrentdateDOTcurrenttime.
+This folder will be used by the program to store the two generated files and the downloaded data file. The first log file generated will be details*.*log
+It will contain the program logs such as errors and infos level details. The second log file will be created with the name statistics*.*log
+under the name of statistics . log and it will contain all records sent with SUCCESS or FAILURE as prefic according to the API POST call response.
 
 * Click to watch the live [demo video](https://youtu.be/vcIizhXkPwg)
 
@@ -178,6 +179,12 @@ Examples:
 $ go test -v
 === RUN   TestExtractFilename
 --- PASS: TestExtractFilename (0.00s)
+=== RUN   TestRemoveMemoField
+--- PASS: TestRemoveMemoField (0.00s)
+=== RUN   TestReplaceEmptyValues
+--- PASS: TestReplaceEmptyValues (0.00s)
+=== RUN   TestRemoveDuplicateRecords
+--- PASS: TestRemoveDuplicateRecords (0.00s)
 === RUN   TestToJson
 --- PASS: TestToJson (0.00s)
 === RUN   ExamplePause_exit
@@ -185,10 +192,17 @@ $ go test -v
 === RUN   ExamplePause_continue
 --- PASS: ExamplePause_continue (0.00s)
 === RUN   ExampleBanner
---- PASS: ExampleBanner (0.08s)
+--- PASS: ExampleBanner (0.07s)
 PASS
-ok      github.com/jeamon/eprocessor    0.219s
+ok      github.com/jeamon/eprocessor    0.188s
 ```
+
+
+## Upcomings
+
+* add string flag -secret. when specified will be the AES key to encrypt the passed arguments formatted into json then saved into a local file.
+* add subcommand load. when specified will require two flags -config (to indicate the local config file) and -secret to precise the key to decrypt.
+* when flags -save and -secret are provided - program will only save parameters passed into a local encrypted file and ignore saving into ENV variables.  
 
 
 ## Contribution
